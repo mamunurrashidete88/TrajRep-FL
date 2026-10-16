@@ -1,0 +1,188 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% TrajRep-FL: condensed methodology
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{TrajRep-FL}
+\label{sec:methodology}
+
+TrajRep-FL implements Eq.~\eqref{eq:trajectory_aware_aggregation} using states retained across valid client participations. For $c_i\in\mathcal A_t$, it encodes updates $\Delta w_i^t\in\mathbb R^d$ and combines temporal and peer evidence into reliability-gated weights without hard exclusion (Fig.~\ref{fig:trajrep_architecture}).
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.9\textwidth]{Figures/System Architecture_TrajRep.png}
+\caption{TrajRep-FL projects valid updates into persistent recurrent states, compares temporal anchors and peer evidence, and computes reliability-gated weights. Separate monitoring does not alter aggregation.}
+\Description{Architecture showing update projection, recurrent encoding, historical anchors, temporal and peer-relative features, reliability estimation, aggregation weights, and separate monitoring.}
+\label{fig:trajrep_architecture}
+\end{figure*}
+
+\subsection{Cross-Session Trajectory Encoding}
+\label{subsec:trajectory_encoding}
+
+For the ordered valid-update history $\mathcal H_i^t=(\Delta w_i^{\tau_{i,1}},\ldots,\Delta w_i^{\tau_{i,n_i(t)}})$ from Section~\ref{subsec:trajectory_aware_aggregation}, each update is normalized and projected:
+\begin{equation}
+\mathbf{x}_i^t=\mathcal{P}\!\left(\frac{\Delta w_i^t}{\|\Delta w_i^t\|_2+\varepsilon_{\mathrm{norm}}}\right)\in\mathbb{R}^{d_x},\quad c_i\in\mathcal{A}_t,\ d_x\ll d,
+\label{eq:method_projected_update}
+\end{equation}
+where $\varepsilon_{\mathrm{norm}}>0$ and $\mathcal P$ is a fixed sparse random projection shared across clients and rounds. Thus, $\mathcal{X}_i^t=(\mathbf{x}_i^{\tau_{i,1}},\ldots,\mathbf{x}_i^{\tau_{i,n_i(t)}})$ preserves participation order, but only valid updates are encoded.
+
+A two-layer GRU retains state without replaying $\mathcal X_i^t$. For previous valid round $t_i^-<t$,
+\begin{equation}
+\begin{aligned}
+\mathbf{h}_i^t&=\operatorname{GRU}_{\phi^t}\!\left(\mathbf{x}_i^t,\operatorname{sg}(\mathbf{h}_i^{t_i^-})\right),\\
+\mathbf{z}_i^t&=\operatorname{Head}_{\phi^t}(\mathbf{h}_i^t)\in\mathbb R^{d_z},\quad d_z\ll d_x,
+\end{aligned}
+\label{eq:method_online_encoder}
+\end{equation}
+Here $\phi^t$ is the round-start encoder snapshot and $\operatorname{sg}$ stops gradients; initial states are zero. Retained states and anchors, computed under past encoder parameters, remain detached, preventing backpropagation through earlier participations. Encoder drift may change latent states; elapsed absence duration is not encoded.
+
+The decoder $\widehat{\mathbf{x}}_i^t=\mathcal{D}_{\vartheta^t}(\mathbf{z}_i^t)$ is trained, for $n_t=|\mathcal{A}_t|>0$, with
+\begin{equation}
+\mathcal{L}_{\mathrm{rec}}^t=\frac{1}{n_t}\sum_{c_i\in\mathcal{A}_t}\|\widehat{\mathbf{x}}_i^t-\mathbf{x}_i^t\|_2^2.
+\label{eq:method_rec_loss}
+\end{equation}
+Reconstruction preserves update information, not attack labels; the decoder does not affect aggregation.
+
+\subsection{Multi-Resolution Trajectory Modeling}
+\label{subsec:method_multi_resolution}
+
+Each client retains a single-scale EMA anchor $\bar{\mathbf z}_i^t=\gamma\mathbf z_i^t+(1-\gamma)\bar{\mathbf z}_i^{t_i^-}$ and fast/slow anchors
+\begin{equation}
+\begin{aligned}
+\bar{\mathbf{z}}_i^{t,\mathrm{fast}}&=\gamma_{\mathrm{fast}}\mathbf{z}_i^t+(1-\gamma_{\mathrm{fast}})\bar{\mathbf{z}}_i^{t_i^-,\mathrm{fast}},\\
+\bar{\mathbf{z}}_i^{t,\mathrm{slow}}&=\gamma_{\mathrm{slow}}\mathbf{z}_i^t+(1-\gamma_{\mathrm{slow}})\bar{\mathbf{z}}_i^{t_i^-,\mathrm{slow}},
+\end{aligned}
+\label{eq:method_fast_slow}
+\end{equation}
+with $0<\gamma_{\mathrm{slow}}<\gamma_{\mathrm{fast}}\leq1$ and $0<\gamma\leq1$. Larger coefficients emphasize recent updates. All features use \emph{previous} anchors, before incorporating $\mathbf z_i^t$.
+
+Let $N_\varepsilon(\mathbf v)=\max(\|\mathbf v\|_2,\varepsilon_{\cos})$ for $\varepsilon_{\cos}>0$. Define $\cos_\varepsilon(\mathbf a,\mathbf b)=\langle\mathbf a,\mathbf b\rangle/[N_\varepsilon(\mathbf a)N_\varepsilon(\mathbf b)]$ and $d_c=1-\cos_\varepsilon$. Then
+\begin{equation}
+\Delta_{\mathrm{ST}}^t(i)=d_c\!\left(\mathbf z_i^t,\bar{\mathbf z}_i^{t_i^-}\right),
+\label{eq:method_st}
+\end{equation}
+\begin{equation}
+\Delta_{\mathrm{MR}}^t(i)=\left|d_c\!\left(\mathbf z_i^t,\bar{\mathbf z}_i^{t_i^-,\mathrm{fast}}\right)-d_c\!\left(\mathbf z_i^t,\bar{\mathbf z}_i^{t_i^-,\mathrm{slow}}\right)\right|.
+\label{eq:method_mr}
+\end{equation}
+Both lie in $[0,2]$; differing anchors need not yield nonzero angular disagreement. Initially, all anchors equal $\operatorname{sg}(\mathbf z_i^t)$ and both discrepancies are zero. Later EMA updates use detached states; absent or invalid clients leave anchors unchanged.
+
+\subsection{Cross-Session and Update-Geometry Features}
+\label{subsec:method_features}
+
+Temporal self-consistency combines the discrepancies:
+\begin{equation}
+\mathrm{TSC}_i^t=\beta\Delta_{\mathrm{ST}}^t(i)+(1-\beta)\Delta_{\mathrm{MR}}^t(i),\quad 0\leq\beta\leq1.
+\label{eq:method_tsc}
+\end{equation}
+Let $\boldsymbol\mu_t=n_t^{-1}\sum_{c_j\in\mathcal A_t}\mathbf z_j^t$, $\bar{\mathbf g}^t=n_t^{-1}\sum_{c_j\in\mathcal A_t}\Delta w_j^t$, and $\mathrm{PSC}_i^t=1-\cos_\varepsilon(\mathbf z_i^t,\boldsymbol\mu_t)$. The reliability model receives
+\begin{equation}
+\begin{aligned}
+\mathbf u_i^t=\big[&\mathrm{TSC}_i^t,\;\mathrm{PSC}_i^t,\;\Delta_{\mathrm{MR}}^t(i),\\
+&\|\Delta w_i^t\|_2,\;\cos_\varepsilon\!\left(\Delta w_i^t,\bar{\mathbf g}^t\right)\big]\in\mathbb R^5.
+\end{aligned}
+\label{eq:method_feature_vector}
+\end{equation}
+The separate $\Delta_{\mathrm{MR}}$ feature captures interactions. Agreement is not proof of benign behavior; adversaries can influence peer means.
+
+\subsection{Reliability Calibration and Aggregation}
+\label{subsec:method_weighting}
+
+An MLP outputs $r_i^t=f_{\theta^t}(\mathbf u_i^t)$, clipped to $\widetilde r_i^t=\operatorname{clip}(r_i^t,-R,R)$, $R>0$, with agreement score $q_i^t=\sigma(\widetilde r_i^t)\in[\sigma(-R),\sigma(R)]$. This is not a calibrated probability of benign intent. Its detached self-supervised target is
+\begin{equation}
+\begin{aligned}
+a_i^t&=\frac{\Delta_{\mathrm{ST}}^t(i)+\mathrm{PSC}_i^t+\Delta_{\mathrm{MR}}^t(i)}{6},\\
+\widehat q_i^t&=\operatorname{sg}\!\left(\operatorname{clip}(1-a_i^t,\varepsilon_{\mathrm{cal}},1-\varepsilon_{\mathrm{cal}})\right),
+\end{aligned}
+\label{eq:method_calibration_target}
+\end{equation}
+where $a_i^t\in[0,1]$ and $0<\varepsilon_{\mathrm{cal}}<1/2$. Calibration minimizes
+\begin{equation}
+\mathcal L_{\mathrm{cal}}^t=-\frac1{n_t}\sum_{c_i\in\mathcal A_t}\left[\widehat q_i^t\log q_i^t+(1-\widehat q_i^t)\log(1-q_i^t)\right].
+\label{eq:method_calibration_loss}
+\end{equation}
+The target rewards agreement without attack labels; coordinated attacks may also agree. Hence, theoretical benign--harmful score separation remains an assumption.
+
+Set $b_i^t=\widetilde r_i^t+\log q_i^t$. For nonempty $\mathcal A_t$, the weights and model update are
+\begin{equation}
+\alpha_i^t=\frac{e^{b_i^t}}{\sum_{c_j\in\mathcal A_t}e^{b_j^t}}=\frac{q_i^te^{\widetilde r_i^t}}{\sum_{c_j\in\mathcal A_t}q_j^te^{\widetilde r_j^t}},\quad\sum_{c_i\in\mathcal A_t}\alpha_i^t=1,
+\label{eq:interaction_aware_weight}
+\end{equation}
+\begin{equation}
+w^{t+1}=w^t+\eta_t\sum_{c_i\in\mathcal A_t}\alpha_i^t\Delta w_i^t.
+\label{eq:method_aggregation}
+\end{equation}
+A stable softmax subtracts $\max_j b_j^t$. The two factors sharpen reliability differences, but clipping bounds only \emph{relative weights}. The influence theorem separately assumes $\|\Delta w_i^t\|_2\leq B_\Delta$; input normalization does not enforce it. With $n_t=1$, the sole update receives weight one. With $n_t=0$, $w^{t+1}=w^t$ and all states remain unchanged.
+
+\subsection{Joint Training Objective}
+\label{subsec:method_training}
+
+Let $\mathcal A_t^-=\{c_i\in\mathcal A_t:\alpha_i^{t_i^-}\text{ is stored}\}$ and $n_t^-=|\mathcal A_t^-|$. Define $\mathcal L_{\mathrm{smooth}}^t=(n_t^-)^{-1}\sum_{c_i\in\mathcal A_t^-}(\alpha_i^t-\operatorname{sg}(\alpha_i^{t_i^-}))^2$ if $n_t^->0$, and zero otherwise. Because weights are cohort-relative, this penalty can change with cohort composition. The normalized entropy penalty is
+\begin{equation}
+\mathcal L_{\mathrm{ent}}^t=\begin{cases}\displaystyle\frac1{\log n_t}\sum_{c_i\in\mathcal A_t}\alpha_i^t\log(n_t\alpha_i^t),&n_t>1,\\[1ex]0,&n_t=1,\end{cases}
+\label{eq:method_entropy}
+\end{equation}
+which lies in $[0,1]$ and discourages weight concentration. The cohort-normalized joint objective is
+\begin{equation}
+\mathcal L_{\mathrm{traj}}^t=\mathcal L_{\mathrm{rec}}^t+\lambda_{\mathrm{cal}}\mathcal L_{\mathrm{cal}}^t+\lambda_{\mathrm{smooth}}\mathcal L_{\mathrm{smooth}}^t+\lambda_{\mathrm{ent}}\mathcal L_{\mathrm{ent}}^t.
+\label{eq:method_loss}
+\end{equation}
+Current-round gradients update $\phi,\vartheta,\theta$; historical states, anchors, weights, and $\widehat q_i^t$ are detached. Monitoring does not enter the loss. Optimizer, learning rate, dimensions, and coefficients are specified with the experiments.
+
+\subsection{Adaptive Monitoring and Recovery}
+\label{subsec:method_recovery}
+
+Monitoring is separate from aggregation. Each client has state $m_i^t\in\{\mathrm{normal},\mathrm{monitored}\}$, with threshold $\delta^t\in(0,1)$. A previously normal valid client enters monitoring when $q_i^t<\delta^t$. For previously monitored clients, define $\rho_i^t=\sigma(\kappa_{\mathrm{rec}}(q_i^t-\delta^t))$, $\kappa_{\mathrm{rec}}>0$, and let $\mathcal W_i^t$ contain up to $N_w$ recent valid-participation recovery scores, including the current score. Return to normal occurs when
+\begin{equation}
+\frac1{|\mathcal W_i^t|}\sum_{k\in\mathcal W_i^t}\rho_i^k>\theta_{\mathrm{rec}},\quad 0<\theta_{\mathrm{rec}}<1.
+\label{eq:method_recovery}
+\end{equation}
+Entry and recovery apply according to the \emph{previous} state, so at most one transition occurs per participation; absence leaves state unchanged. A false-positive monitoring event means a benign valid client remains monitored after transition. Monitoring never directly changes $q_i^t$, $\alpha_i^t$, eligibility, or the global update; disabling it alone cannot change clean accuracy or attack success.
+
+For $n_t>0$, define $\bar q_t=n_t^{-1}\sum_{c_i\in\mathcal A_t}q_i^t$ and $\mathcal V_q^t=n_t^{-1}\sum_{c_i\in\mathcal A_t}(q_i^t-\bar q_t)^2$. Let $\mathcal A_{t,\mathrm{TSC}}^-=\{c_i\in\mathcal A_t:\mathrm{TSC}_i^{t_i^-}\text{ is stored}\}$ and $\mathcal S_{\mathrm{TSC}}^t=|\mathcal A_{t,\mathrm{TSC}}^-|^{-1}\sum_{c_i\in\mathcal A_{t,\mathrm{TSC}}^-}|\mathrm{TSC}_i^t-\mathrm{TSC}_i^{t_i^-}|$, or zero for an empty set. Both use current valid scores and retained prior values. With $0<\delta_{\min}\leq\delta_{\mathrm{floor}}\leq\delta_{\max}<1$, $\delta^0=\delta_{\mathrm{floor}}$, and $T_{\mathrm{wu}}\geq1$,
+\begin{equation}
+\begin{aligned}
+\widetilde\delta^{t+1}&=\operatorname{clip}\!\left(\delta^t+\upsilon_S\mathcal S_{\mathrm{TSC}}^t-\upsilon_V\mathcal V_q^t,\delta_{\min},\delta_{\max}\right),\\
+\omega_t&=\min\!\left\{\frac{t+1}{T_{\mathrm{wu}}},1\right\},\\
+\delta^{t+1}&=\delta_{\mathrm{floor}}+\omega_t(\widetilde\delta^{t+1}-\delta_{\mathrm{floor}}),
+\end{aligned}
+\label{eq:method_threshold}
+\end{equation}
+where $\upsilon_S,\upsilon_V\geq0$. After warm-up, $\delta^{t+1}=\widetilde\delta^{t+1}$; with no valid clients, $\delta^{t+1}=\delta^t$. Threshold parameters affect monitoring only.
+
+\subsection{Training Procedure}
+\label{subsec:method_procedure}
+
+Algorithm~\ref{alg:trajrep_fl} uses one encoder snapshot per round. Previously stored anchors determine temporal features; accepted updates determine the current model step. The current detached GRU state, anchors, weights, and monitoring statistics are retained \emph{before} updating encoder parameters, without re-encoding history. Only protocol-valid submissions contribute to learning and aggregation.
+
+\renewcommand{\algorithmicrequire}{\textbf{Input:}}
+\renewcommand{\algorithmicensure}{\textbf{Output:}}
+\begin{algorithm}[t]
+\caption{TrajRep-FL}
+\label{alg:trajrep_fl}
+\begin{algorithmic}[1]
+\REQUIRE $w^0$, $\mathcal C$, $p_{\mathrm{samp}}$, $T$, $\mathcal P$, $\operatorname{GRU}_{\phi}$, $\mathcal D_{\vartheta}$, $f_{\theta}$
+\ENSURE $w^T$
+\STATE Initialize per-client states, anchors, history statistics, monitoring, and $\delta^0=\delta_{\mathrm{floor}}$
+\FOR{$t=0$ to $T-1$}
+\STATE Select $\mathcal S_t$, collect updates, form valid $\mathcal A_t$
+\IF{$\mathcal A_t=\emptyset$}
+\STATE $w^{t+1}\gets w^t$; retain all states
+\ELSE
+\FOR{each $c_i\in\mathcal A_t$}
+\STATE Project $\Delta w_i^t$, update GRU from detached state, compute $\mathbf z_i^t$ and $\widehat{\mathbf x}_i^t$
+\ENDFOR
+\STATE Compute $\boldsymbol\mu_t$, $\bar{\mathbf g}^t$, $\mathcal L_{\mathrm{rec}}^t$
+\FOR{each $c_i\in\mathcal A_t$}
+\STATE Obtain $\Delta_{\mathrm{ST}}^t(i)$, $\Delta_{\mathrm{MR}}^t(i)$ from previous anchors (zero on first visit)
+\STATE Compute $\mathbf u_i^t$, $q_i^t$, and detached $\widehat q_i^t$
+\ENDFOR
+\STATE Compute $\alpha_i^t$ and $w^{t+1}$ using Eq.~\eqref{eq:method_aggregation}
+\STATE Compute $\mathcal L_{\mathrm{traj}}^t$, $\mathcal S_{\mathrm{TSC}}^t$, $\mathcal V_q^t$
+\FOR{each $c_i\in\mathcal A_t$}
+\STATE Compute $\rho_i^t$; update monitoring and record recovery score
+\STATE Update anchors and store detached GRU state, $\alpha_i^t$, and $\mathrm{TSC}_i^t$
+\ENDFOR
+\STATE Update $\delta^{t+1}$; optimize $\phi,\vartheta,\theta$ using $\mathcal L_{\mathrm{traj}}^t$
+\ENDIF
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
