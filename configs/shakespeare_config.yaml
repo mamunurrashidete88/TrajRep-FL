@@ -1,0 +1,79 @@
+experiment:
+  name: trajrep_fl_shakespeare
+  seed: 42
+  output_dir: results/shakespeare
+
+federated:
+  num_clients: 500
+  clients_per_round_fraction: 0.1
+  num_rounds: 150
+  local_epochs: 1
+  local_batch_size: 32
+  learning_rate: 0.5
+  server_learning_rate: 1.0     
+  momentum: 0.9
+
+dataset:
+  name: shakespeare
+  path: data/shakespeare
+  num_classes: 80                   
+  non_iid_type: natural             
+
+model:
+  name: lstm_shakespeare
+  vocab_size: 80
+  embed_dim: 8
+  hidden_dim: 256
+  num_layers: 2
+
+adversary:
+  fraction: 0.2
+  payload: backdoor_token
+  strategy: static
+
+  trigger_length: 5
+  target_class: 0
+
+  delay_rounds: 30
+  drift_duration: 50    # gradual_drift ramp length (rounds)
+  pgd_steps: 20
+  pgd_lr: 0.01
+  expose_own_reliability: true  # prior score feedback in score-aware runs
+  stealth_budget: 0.15              
+
+trajrep_fl:
+  embedding_dim: 64
+  gru_layers: 2
+  projection_dim: 128
+  projection_seed: 42
+  gamma: 0.9
+  gamma_fast: 0.7
+  gamma_slow: 0.1
+  beta: 0.5
+  mlp_hidden: 64
+  clip_R: 5.0
+  epsilon_agg: 0.0   # exact softmax normalization; legacy setting ignored
+  delta_init: 0.05   # delta_floor at initialization
+  delta_min: 0.05
+  delta_max: 0.7
+  delta_floor: 0.05
+  T_wu: 10
+  upsilon_S: 0.10
+  upsilon_V: 0.05
+  kappa_rec: 5.0
+  theta_rec: 0.6
+  recovery_window: 5
+  learning_rate_traj: 1.0e-3
+  weight_decay_traj: 1.0e-5
+  lambda_smooth: 0.1
+  lambda_ent: 0.01
+  lambda_cal: 1.0
+  epsilon_cal: 1.0e-4
+  grad_clip: 5.0
+  eps_norm: 1.0e-8                
+
+evaluation:
+  target_acc_threshold: 40.0
+  random_asr_baseline: 1.25         
+
+
