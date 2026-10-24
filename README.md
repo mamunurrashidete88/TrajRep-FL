@@ -104,9 +104,7 @@ TrajRep-FL/
 ├── utils/
 │   ├── logging_utils.py
 │   ├── reproducibility.py
-│   
-│
-└── results/
+
 
 
 
