@@ -4,10 +4,8 @@
 
 ## Overview
 
-TrajRep-FL is a trajectory representation learning framework for robust federated optimization.
-It encodes each client's update history into a compact latent trajectory, maintains
-multi-resolution temporal anchors, and computes aggregation weights through an
-interaction-aware reliability MLP.
+TrajRep-FL is a trajectory representation learning framework for robust federated optimization. It encodes each client's update history into a compact latent trajectory, maintains
+multi-resolution temporal anchors, and computes aggregation weights through an interaction-aware reliability MLP.
 
 **Key components:**
 - **Trajectory Encoder** 
@@ -26,21 +24,21 @@ TrajRep-FL/
 ├── trajrep_fl/          # Core TrajRep-FL implementation
 │   ├── encoder.py       #   Sparse projection + GRU encoder + decoder
 │   ├── anchors.py       #   Multi-resolution trajectory anchors
-│   ├── features.py      #   TSC, PSC, ΔMR, feature vector construction
+│   ├── features.py      #   TSC, PSC, feature vector construction
 │   ├── reliability.py   #   Interaction MLP + reliability scoring
-│   ├── aggregation.py   #   Reliability-gated aggregation (Eq. 4)
-│   ├── recovery.py      #   Adaptive threshold + influence recovery (Eq. 6–8)
-│   ├── objective.py     #   L_traj = L_rec + λ_smooth·L_smooth + λ_ent·L_ent
-│   └── server.py        #   Full per-round pipeline (Algorithm 1)
+│   ├── aggregation.py   #   Reliability-gated aggregation 
+│   ├── recovery.py      #   Adaptive threshold + influence recovery 
+│   ├── objective.py     #   
+│   └── server.py        #   Full per-round pipeline 
 ├── baselines/           # All comparison methods
 ├── attacks/             # Payloads × execution strategies
 ├── models/              # FEMNIST CNN, CIFAR-10 CNN, Shakespeare LSTM
 ├── data/                # Dataset loaders (LEAF / Dirichlet)
 ├── fl/                  # FL client, federated runner, base server
-├── evaluation/          # Metrics: ACC, ASR, FPR, EHC, TSI, WV
+├── evaluation/          # Metrics
 ├── experiments/         # Experiment runners
 ├── configs/             # YAML hyperparameter configs
-└── scripts/             # Data preparation + shell scripts
+└── scripts/             # Data preparation 
 ```
 
 ---
