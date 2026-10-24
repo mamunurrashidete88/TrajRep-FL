@@ -51,14 +51,10 @@ class ScoreAwareAdaptiveAttack(BaseAttack):
  
         flat_benign = self.get_flat_delta(delta).to(self.device)
 
-        # A score-aware attack cannot observe the *current* round's cohort
-        # score before submission.  Its available feedback is its own LAST
-        # submitted score, if the experiment makes that feedback visible.
+
         if self.score_fn is None:
             prev_q = self._previous_q.get(client_id)
-            # Before feedback is available, use a bounded non-adaptive warm-up.
-            # Higher previous q allows more aggressive deviations. The budget
-            # bounds the distance from the benign update in parameter space.
+
             adaptation = 0.5 if prev_q is None else max(0.05, min(1.0, prev_q))
             budget = self.zeta_bar * adaptation * flat_benign.norm().clamp_min(1e-12)
             direction = -flat_benign / flat_benign.norm().clamp_min(1e-12)
@@ -69,9 +65,7 @@ class ScoreAwareAdaptiveAttack(BaseAttack):
                 candidate = flat_benign + movement * min(1.0, float(budget / movement.norm().clamp_min(1e-12)))
             return self.set_flat_delta(delta, candidate.detach().cpu())
 
-        # Optional explicit score oracle, supplied only in experiments whose
-        # threat model permits it. PGD ascent against the alignment objective,
-        # projected into an L2 ball around the honest update.
+
         base = flat_benign.detach()
         radius = self.zeta_bar * base.norm().clamp_min(1e-12)
         delta_adv = base.clone()

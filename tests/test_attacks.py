@@ -1,9 +1,4 @@
-"""
-tests/test_attacks.py
-=====================
-Comprehensive tests for all attack implementations.
-Tests both payloads and execution strategies.
-"""
+
 from __future__ import annotations
 
 import sys
@@ -128,7 +123,7 @@ class TestGradualDriftAttack:
             prev = current
 
     def test_cumulative_drift_over_rounds(self, delta_large, sampled_ids):
-        """Cumulative drift should grow monotonically with round index."""
+        
         from attacks.gradual_drift import GradualDriftAttack
         import torch.nn.functional as F
         atk = GradualDriftAttack([0], drift_duration=50)
@@ -174,7 +169,7 @@ class TestScoreAwareAdaptiveAttack:
         from attacks.score_aware import ScoreAwareAdaptiveAttack
         atk = ScoreAwareAdaptiveAttack([0], score_fn=None, damage_scale=3.0)
         poisoned = atk.poison(delta_small, None, 0, 1, sampled_ids)
-        # Should still modify delta (scale up)
+        
         for k in delta_small:
             assert poisoned[k].shape == delta_small[k].shape
 
@@ -183,7 +178,7 @@ class TestScoreAwareAdaptiveAttack:
         budget = 0.4
 
         def mock_score_fn(flat_delta):
-            # Score proportional to norm (proxy for deception score)
+            
             return torch.tensor(flat_delta.norm().item() * 0.1)
 
         atk = ScoreAwareAdaptiveAttack(

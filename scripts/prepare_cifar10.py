@@ -1,8 +1,4 @@
-"""
-scripts/prepare_cifar10.py
-==========================
 
-"""
 
 from __future__ import annotations
 

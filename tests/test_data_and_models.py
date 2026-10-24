@@ -1,8 +1,4 @@
-"""
-tests/test_data_and_models.py
-=============================
-Tests for dataset loaders, model architectures, and FL client.
-"""
+
 from __future__ import annotations
 
 import sys
@@ -226,7 +222,7 @@ class TestFLClient:
         )
         initial_params = {n: p.data.clone() for n, p in model.named_parameters()}
         delta = client.train(copy.deepcopy(model), round_idx=1)
-        # Delta can be zero only if training produced exactly the same params
+        
         assert all(isinstance(v, torch.Tensor) for v in delta.values())
 
     def test_data_size_reported(self):

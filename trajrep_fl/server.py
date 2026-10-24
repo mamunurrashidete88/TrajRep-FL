@@ -1,9 +1,3 @@
-"""
-trajrep_fl/server.py
-====================
-TrajRep-FL Server.
-
-"""
 
 from __future__ import annotations
 
@@ -48,17 +42,7 @@ logger = logging.getLogger("trajrep_fl")
 
 
 class TrajRepFLServer(BaseServer):
-    """
-    TrajRep-FL server.
 
-    Parameters
-    ----------
-    model_dim : int
-        Flattened parameter count of the task model.
-    cfg : dict
-        Hyperparameter dictionary (see configs/*.yaml for defaults).
-    device : torch.device
-    """
 
     def __init__(
         self,
@@ -67,7 +51,7 @@ class TrajRepFLServer(BaseServer):
         device: torch.device = torch.device("cpu"),
         **kwargs,
     ):
-        # BaseServer stores global_model, learning_rate, device
+        
         super().__init__(device=device, **kwargs)
         self.model_dim = model_dim
         self.cfg = cfg
@@ -77,7 +61,7 @@ class TrajRepFLServer(BaseServer):
         n_layers = cfg.get("gru_layers", 2)
         clip_R = cfg.get("clip_R", 5.0)
 
-        # ── 1. Sparse random projection (fixed) ──────────────────────
+        # ── 1. Sparse random projection  ──────────────────────
         self.projection = SparseRandomProjection(
             model_dim=model_dim,
             projection_dim=d_x,
@@ -178,7 +162,7 @@ class TrajRepFLServer(BaseServer):
         self.grad_clip = cfg.get("grad_clip", 5.0)
 
     # ------------------------------------------------------------------
-    # Main entry point (called by federated_runner.py each round)
+    # Main entry point 
     # ------------------------------------------------------------------
 
     def aggregate(
@@ -190,26 +174,11 @@ class TrajRepFLServer(BaseServer):
         harmful_client_ids: Optional[List[int]] = None,
         **kwargs,
     ) -> Tuple[nn.Module, Dict[str, Any]]:
-        """
-        Run one TrajRep-FL round.
 
-        Parameters
-        ----------
-        client_deltas       : {cid: {param_name: tensor}}
-        sampled_client_ids  : clients that participated this round
-        round_idx           : 0-indexed round counter
-        learning_rate       : server step size η_t (overrides stored value)
-        harmful_client_ids  : ground-truth harmful IDs (for EHC logging only)
-
-        Returns
-        -------
-        (updated_global_model, log_dict)
-        """
         lr = self.learning_rate if learning_rate is None else learning_rate
         log: Dict[str, Any] = {"round": round_idx}
 
-        # Validate submitted parameter structure and finite values before changing
-        # a client's recurrent state.  Protocol-validity is not a benignness test.
+
         param_spec = [(name, tuple(p.shape)) for name, p in self.global_model.named_parameters()]
         param_names = {name for name, _ in param_spec}
         flat_deltas: Dict[int, torch.Tensor] = {}
@@ -245,16 +214,15 @@ class TrajRepFLServer(BaseServer):
                 continue
             delta = flat_deltas[cid]
 
-            # Norm(v) = v / (||v||_2 + ε_norm)  
+ 
             eps_norm = self.cfg.get("eps_norm", 1e-8)
             delta_norm = delta / (delta.norm() + eps_norm)
 
-            # Project  x_i^t = P(norm(Δw_i^t))
             with torch.no_grad():
                 x = self.projection(delta_norm.unsqueeze(0)).squeeze(0)
             projected[cid] = x
 
-            # Ablation: no encoder — use mean-pooled projection as embedding
+
             if self._abl["no_encoder"]:
                 z = x[:self.cfg.get("embedding_dim", 64)].detach()
                 embeddings[cid] = z
@@ -262,7 +230,7 @@ class TrajRepFLServer(BaseServer):
                 self.client_states.increment(cid, round_idx)
                 continue
 
-            # Ablation: replace GRU with EMA in projected space
+
             if self._abl["ema_encoder"]:
                 prev_z = self.client_states.get_embedding(cid)
                 z = x[:self.cfg.get("embedding_dim", 64)]
@@ -279,14 +247,14 @@ class TrajRepFLServer(BaseServer):
             # Standard GRU encode
             hidden = self.client_states.get_hidden(cid)
 
-            # Forward through encoder (kept in computation graph for L_rec)
+            # Forward through encoder (
             x_seq = x.unsqueeze(0).unsqueeze(0)  # 
             if hidden is not None:
                 hidden = hidden.to(self.device)
             z, new_hidden = self.encoder(x_seq, hidden)
             z = z.squeeze(0)              # 
 
-            # Decode for L_rec
+            # Decode
             x_hat = self.decoder(z.unsqueeze(0)).squeeze(0)
             x_hat_map[cid] = x_hat
 
@@ -295,13 +263,11 @@ class TrajRepFLServer(BaseServer):
             self.client_states.set_hidden(cid, new_hidden)
             self.client_states.increment(cid, round_idx)
 
-        # ── Step 5: Compute features (DIFFERENTIABLE) ─────────────────
-        # A_t = protocol-valid set = clients that produced embeddings this round.
-        # NOTE: embeddings[cid] keeps its autograd graph (encoder), so the
-        # feature vector -> MLP -> q -> alpha -> L_traj path is differentiable.
+        # ── Step 5: Compute features  ─────────────────
+
         active_protocol_ids = list(embeddings.keys())
 
-        # Centroid is a detached reference (mean of detached embeddings).
+        
         centroid = compute_latent_centroid(
             {cid: embeddings[cid].detach() for cid in active_protocol_ids},
             active_protocol_ids,
@@ -310,7 +276,7 @@ class TrajRepFLServer(BaseServer):
             flat_deltas, active_protocol_ids
         ).to(self.device)
 
-        u_map: Dict[int, torch.Tensor] = {}   # graph-tracking feature tensors
+        u_map: Dict[int, torch.Tensor] = {}   
         tsc_map: Dict[int, float] = {}
         mr_map: Dict[int, float] = {}
         st_map: Dict[int, float] = {}
@@ -318,11 +284,11 @@ class TrajRepFLServer(BaseServer):
         for cid in sampled_client_ids:
             if cid not in embeddings:
                 continue
-            z = embeddings[cid]  # KEEP graph (do not detach)
+            z = embeddings[cid]  # 
 
             a_single, a_fast, a_slow = self.anchors.get_anchors_tensor(cid)
 
-            # no-multi-res ablation: collapse fast/slow onto single
+            
             if self._abl["no_multi_res"]:
                 a_fast = a_single
                 a_slow = a_single
@@ -344,9 +310,7 @@ class TrajRepFLServer(BaseServer):
             st_map[cid] = (0.0 if a_single is None else float(
                 (1.0 - F.cosine_similarity(z.detach(), a_single.to(z.device), dim=0, eps=1e-12))))
 
-        # ── Step 7: Reliability scoring (graph preserved) ─────────────
-        # r_tensor / q_tensor stay in the graph for L_traj; *_map floats are
-        # detached copies used for the no_grad model apply, logging and state.
+
         active_ids = [cid for cid in sampled_client_ids if cid in u_map]
 
         r_tilde_map: Dict[int, float] = {}
@@ -377,8 +341,7 @@ class TrajRepFLServer(BaseServer):
                 r_t = self.mlp(u.unsqueeze(0)).squeeze(0)  # clipped logit, graph
                 q_t = torch.sigmoid(r_t)
 
-            # Parameter-free ablations can emit exact 0 or 1; clamp only there
-            # to keep the shared aggregation code numerically valid.
+
             if not use_mlp:
                 q_t = q_t.clamp(min=1e-6, max=1-1e-6)
             r_tensor_list.append(r_t.reshape(()))
@@ -404,7 +367,7 @@ class TrajRepFLServer(BaseServer):
                 active_ids, q_map, delta
             )
         else:
-            # Monitoring-only ablation: no recovery transition (no aggregation effect)
+            # Monitoring-only ablation: 
             newly_flagged, recovered = [], []
             for cid in active_ids:
                 if q_map.get(cid, 1.0) < delta:
@@ -421,12 +384,7 @@ class TrajRepFLServer(BaseServer):
             ),
         })
 
-        # ── Step 9: Compute aggregation weights ───────────────────────
-        # Protocol-valid = all sampled clients (monitored clients keep reduced
-        # influence through q_i^t rather than full exclusion).
-        #
-        # alpha_tensor  : differentiable, aligned to active_ids -> used in L_traj
-        # alpha (float) : detached copy -> used for the no_grad model apply.
+
         alpha_tensor = self.aggregator.compute_weights_tensor(
             active_ids, q_tensor, r_tensor
         )
@@ -439,9 +397,7 @@ class TrajRepFLServer(BaseServer):
         log['q_scores'] = dict(q_map)
         log['active_clients_list'] = list(active_ids)
         log['trust_weights'] = {cid: torch.tensor(alpha[cid]) for cid in active_ids}
-        # Monitoring is not isolation; the runner uses monitored_client_ids for FPR.
 
-        # Store α_i^t for smoothness loss next round
         prev_alpha: Dict[int, Optional[float]] = {}
         for cid in active_ids:
             prev_alpha[cid] = self.rel_state.get_last_alpha(cid)
@@ -457,17 +413,13 @@ class TrajRepFLServer(BaseServer):
             device=self.device,
         )
 
-        # Store detached current anchor states after all feature and weight
-        # computations; absent/invalid clients retain all historical states.
+
         for cid, z in embeddings.items():
             self.anchors.update(cid, z.detach())
 
-        # ── Step 11: Back-propagate L_traj ────────────────────────────
-        # Trains encoder + decoder (L_rec) AND the interaction MLP
-        # (L_rel + differentiable L_smooth / L_ent through alpha).
+
         if not self._abl["no_encoder"]:
-            # The manuscript target contains only ST, PSC, MR (not reconstruction
-            # error or round-relative z-scores). The target is detached.
+
             if use_mlp and active_ids:
                 u_matrix = torch.stack([u_map[cid].detach() for cid in active_ids])
                 target_features = u_matrix.clone()

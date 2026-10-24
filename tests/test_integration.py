@@ -1,7 +1,4 @@
-"""
-tests/test_integration.py
-==========================
-"""
+
 
 from __future__ import annotations
 
@@ -75,7 +72,7 @@ def make_server(extra_cfg=None) -> TrajRepFLServer:
 
 
 def make_client_deltas(client_ids, model):
-    """Fake client deltas: each client sends a random parameter delta."""
+    
     deltas = {}
     for cid in client_ids:
         deltas[cid] = {
@@ -95,14 +92,14 @@ class TestFullRound:
         model_before = {n: p.data.clone() for n, p in server.global_model.named_parameters()}
         _, log = server.aggregate(deltas, ids, round_idx=0)
 
-        # Model should have changed
+        
         model_after = dict(server.global_model.named_parameters())
         assert any(
             not torch.allclose(model_before[n], model_after[n].data)
             for n in model_before
         ), "Global model was not updated"
 
-        # Log should contain expected keys
+        
         for key in ["round", "delta", "mean_q", "num_monitored"]:
             assert key in log, f"Missing log key: {key}"
 
@@ -126,7 +123,7 @@ class TestFullRound:
         assert log["EHC"] >= 0.0
 
     def test_intermittent_participation(self):
-        """Clients that skip rounds should retain their hidden states."""
+        
         server = make_server()
         all_ids = list(range(10))
 
@@ -134,12 +131,12 @@ class TestFullRound:
         deltas = make_client_deltas(all_ids, server.global_model)
         server.aggregate(deltas, all_ids, round_idx=0)
 
-        # Round 1: only half participate
+        
         half = all_ids[:5]
         deltas = make_client_deltas(half, server.global_model)
         server.aggregate(deltas, half, round_idx=1)
 
-        # Clients 5–9 should still have their hidden states from round 0
+        
         for cid in all_ids[5:]:
             assert server.client_states.get_hidden(cid) is not None
 

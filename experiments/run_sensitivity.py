@@ -1,7 +1,4 @@
-"""
-experiments/run_sensitivity.py
-================================
-"""
+
 
 from __future__ import annotations
 
@@ -25,7 +22,7 @@ def run_with_override(
     strategy: str,
     extra_yaml_overrides: Dict,
 ) -> Dict:
-    """Write a temporary config override and run an experiment."""
+    
     import tempfile, yaml
 
     config_path = Path(__file__).parent.parent / "configs" / f"{dataset}_config.yaml"

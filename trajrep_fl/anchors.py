@@ -1,7 +1,3 @@
-"""
-trajrep_fl/anchors.py
-=====================
-"""
 
 from __future__ import annotations
 
@@ -18,20 +14,7 @@ def _cosine_distance(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
 
 
 class MultiResolutionAnchorManager:
-    """
-    Manages per-client trajectory anchors.
-
-    Parameters
-    ----------
-    embedding_dim : int
-    gamma : float
-        Single-scale anchor decay.  
-    gamma_fast : float
-        Fast anchor decay (> gamma_slow).  
-    gamma_slow : float
-        Slow anchor decay.  
-    device : torch.device
-    """
+    
 
     def __init__(
         self,
@@ -62,10 +45,7 @@ class MultiResolutionAnchorManager:
         client_id: int,
         z: torch.Tensor,
     ) -> Tuple[float, float, float]:
-        """
-        Compute TSC numerator components and ΔMR for client_id using
-        the PREVIOUS anchors (before this participation is incorporated).
-        """
+
         if client_id not in self._single:
             # First participation — no prior anchor; distances initialised to 0
             return 0.0, 0.0, 0.0
@@ -77,7 +57,7 @@ class MultiResolutionAnchorManager:
         return d_single, d_fast, d_slow
 
     # ------------------------------------------------------------------
-    # Anchor update (called AFTER compute_features)
+    # Anchor update 
     # ------------------------------------------------------------------
 
     def update(self, client_id: int, z: torch.Tensor):
@@ -107,11 +87,7 @@ class MultiResolutionAnchorManager:
     def get_anchors_tensor(
         self, client_id: int
     ) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor], Optional[torch.Tensor]]:
-        """Return (single, fast, slow) anchor tensors or (None, None, None).
 
-        Anchors are detached references; callers must not back-propagate into
-        them.  Used by the differentiable feature builder.
-        """
         if client_id not in self._single:
             return None, None, None
         return (

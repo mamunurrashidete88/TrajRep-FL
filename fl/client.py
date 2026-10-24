@@ -1,8 +1,4 @@
-"""
-fl/client.py
-============
 
-"""
 
 from __future__ import annotations
 
@@ -90,8 +86,7 @@ class FLClient:
                             source = int(poison_spec.get('source_class', 1))
                             batch_y[mask & (batch_y == source)] = int(poison_spec.get('target_class', 0))
 
-                # A final singleton batch breaks BatchNorm1d in the FEMNIST head.
-                # Skip that remainder rather than crashing a long FL experiment.
+
                 if batch_x.size(0) == 1 and any(isinstance(m, nn.BatchNorm1d) for m in local_model.modules()):
                     continue
                 optimizer.zero_grad()

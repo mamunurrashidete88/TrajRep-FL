@@ -1,26 +1,4 @@
-"""
-baselines/all_baselines.py
-==========================
-All baseline defense implementations used for comparison.
 
-Stateless:
-  - FedAvg          (McMahan et al., 2017)
-  - TrimmedMean     (Yin et al., 2018)
-  - Krum / MultiKrum (Blanchard et al., 2017)
-
-Probabilistic / frequency-domain:
-  - BayBFed         (Kumari et al., 2023)
-  - FLIP            (Zhang et al., 2023)  [vision only]
-
-Stateful / trajectory-aware:
-  - FedRecover      (Cao et al., 2023)
-  - FLDetector      (Zhang et al., 2022)
-  - LongShortHistory (Gupta et al., 2022)
-
-All implement the BaseServer interface:
-    aggregate(client_deltas, sampled_client_ids, round_idx, **kwargs)
-    → (updated_model, log_dict)
-"""
 
 from __future__ import annotations
 
@@ -88,7 +66,7 @@ class FedAvgServer(BaseServer):
 
 
 # =======================================================================
-#  Trimmed Mean  (Yin et al., 2018)
+#  Trimmed Mean  
 # =======================================================================
 
 class TrimmedMeanServer(BaseServer):
@@ -133,7 +111,7 @@ class TrimmedMeanServer(BaseServer):
 
 
 # =======================================================================
-#  Krum / Multi-Krum  (Blanchard et al., 2017)
+#  Krum / Multi-Krum  
 # =======================================================================
 
 class KrumServer(BaseServer):
@@ -169,7 +147,7 @@ class KrumServer(BaseServer):
                     continue
                 dists.append((flat_grads[cid_i] - flat_grads[cid_j]).pow(2).sum().item())
             dists_sorted = sorted(dists)
-            # Sum of n - f - 2 nearest neighbours
+            
             scores[cid_i] = sum(dists_sorted[: max(n - f - 2, 1)])
 
         # Select top multi_k by lowest score
@@ -190,7 +168,7 @@ class KrumServer(BaseServer):
 
 
 # =======================================================================
-#  BayBFed  (Kumari et al., 2023)
+#  BayBFed  
 # =======================================================================
 
 class BayBFedServer(BaseServer):
@@ -243,7 +221,7 @@ class BayBFedServer(BaseServer):
 
 
 # =======================================================================
-#  FLIP  (Zhang et al., 2023) — vision only
+#  FLIP  
 # =======================================================================
 
 class FLIPServer(BaseServer):
@@ -307,7 +285,7 @@ class FLIPServer(BaseServer):
 
 
 # =======================================================================
-#  FedRecover  (Cao et al., 2023)
+#  FedRecover  
 # =======================================================================
 
 class FedRecoverServer(BaseServer):
@@ -373,7 +351,7 @@ class FedRecoverServer(BaseServer):
 
 
 # =======================================================================
-#  FLDetector  (Zhang et al., 2022)
+#  FLDetector  
 # =======================================================================
 
 class FLDetectorServer(BaseServer):
@@ -436,7 +414,7 @@ class FLDetectorServer(BaseServer):
 
 
 # =======================================================================
-#  Long-Short History  (Gupta et al., 2022)
+#  Long-Short History  
 # =======================================================================
 
 class LongShortHistoryServer(BaseServer):
@@ -459,21 +437,13 @@ class LongShortHistoryServer(BaseServer):
         self._isolation_set: set = set()
 
     def _update_ema(self, cid: int, flat: torch.Tensor) -> float:
-        """
-        Update both EMAs and return divergence of current update from slow EMA.
 
-        We compare the incoming flat update to the slow EMA (long-term reference),
-        not fast-to-slow.  This correctly detects abrupt reversals: when a large
-        negative update arrives, the slow EMA (near the long-term mean) diverges
-        from the current update in cosine space, triggering isolation.
-        """
         if cid not in self._ema_fast:
             self._ema_fast[cid] = flat.clone()
             self._ema_slow[cid] = flat.clone()
             return 0.0
 
-        # Compute divergence BEFORE updating slow EMA
-        # d_c(flat, slow_prev) = 1 - cos(flat, slow), scaled to [0, 20]
+
         s_prev = self._ema_slow[cid]
         cos = (flat * s_prev).sum() / ((flat.norm() + 1e-8) * (s_prev.norm() + 1e-8))
         divergence = (1.0 - cos.item()) * 10.0
@@ -548,7 +518,7 @@ class TrajRepFLServerWrapper(BaseServer):
             learning_rate, device, seed,
         )
         from trajrep_fl.server import TrajRepFLServer
-        cfg = dict(trajrep_cfg)           # shallow copy — do not mutate caller's dict
+        cfg = dict(trajrep_cfg)           
         cfg["num_clients"] = num_clients
         if ablation_overrides:
             cfg.update(ablation_overrides)

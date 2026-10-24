@@ -1,9 +1,4 @@
-"""
-trajrep_fl/features.py
-======================
-Feature Vector Construction for TrajRep-FL (Section 4.3 of the paper).
 
-"""
 
 from __future__ import annotations
 
@@ -14,14 +9,14 @@ import torch.nn.functional as F
 
 
 # ---------------------------------------------------------------------------
-# Round-level aggregates
+# Round-level 
 # ---------------------------------------------------------------------------
 
 def compute_round_mean(
     flat_deltas: Dict[int, torch.Tensor],
     client_ids: List[int],
 ) -> torch.Tensor:
-    """gbar^t = mean of flat update vectors for this round."""
+
     vecs = [flat_deltas[cid] for cid in client_ids if cid in flat_deltas]
     if not vecs:
         return torch.zeros(1)
@@ -35,7 +30,7 @@ def compute_latent_centroid(
     embeddings: Dict[int, torch.Tensor],
     client_ids: List[int],
 ) -> torch.Tensor:
-    """mu_t = mean of latent embeddings for the current round."""
+
     zs = [embeddings[cid] for cid in client_ids if cid in embeddings]
     if not zs:
         return torch.zeros(64)
@@ -43,7 +38,7 @@ def compute_latent_centroid(
 
 
 # ---------------------------------------------------------------------------
-# Float builder (logging + parameter-free ablations only)
+# Float builder 
 # ---------------------------------------------------------------------------
 
 def build_feature_vector(
@@ -57,7 +52,7 @@ def build_feature_vector(
     round_mean_delta: torch.Tensor,
     beta: float = 0.5,
 ) -> torch.Tensor:
-    """Construct u_i^t in R^5 as a detached CPU tensor (no autograd graph)."""
+
     delta_mr = abs(d_fast - d_slow)
     tsc = beta * d_single + (1.0 - beta) * delta_mr
 
@@ -82,7 +77,7 @@ def build_feature_vector(
 
 
 # ---------------------------------------------------------------------------
-# Differentiable builder (main training path)
+# Differentiable builder 
 # ---------------------------------------------------------------------------
 
 def _cos_distance_t(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
@@ -102,24 +97,13 @@ def build_feature_vector_tensor(
     round_mean_delta: torch.Tensor,
     beta: float = 0.5,
 ) -> torch.Tensor:
-    """
-    Construct u_i^t in R^5 as a DIFFERENTIABLE tensor.
-
-    Gradient flows through ``z`` (TSC, Delta_MR, PSC).  Anchors, centroid and
-    round-mean are detached (constant references).  The two update-geometry
-    features (||Delta w|| and cos(Delta w, gbar)) do not depend on z and are
-    computed without grad.
-
-    Returns
-    -------
-    u : (5,) tensor on the same device as ``z`` with requires_grad tied to z.
-    """
+    
     device = z.device
 
     # --- anchors as detached references ---
     if anchor_single is None:
-        # First participation: no prior anchors -> TSC / Delta_MR are zero.
-        zero = z.sum() * 0.0  # keeps graph but value 0
+        
+        zero = z.sum() * 0.0  
         d_single = zero
         d_fast = zero
         d_slow = zero
@@ -134,11 +118,11 @@ def build_feature_vector_tensor(
     delta_mr = torch.abs(d_fast - d_slow)
     tsc = beta * d_single + (1.0 - beta) * delta_mr
 
-    # PSC (depends on z; centroid detached)
+    # PSC 
     c = centroid.detach().to(device)
     psc = _cos_distance_t(z, c)
 
-    # Update geometry (independent of z -> no grad needed)
+    # Update geometry 
     with torch.no_grad():
         delta_norm = flat_delta.float().norm().to(device)
         d_n = F.normalize(flat_delta.float().unsqueeze(0), dim=-1)

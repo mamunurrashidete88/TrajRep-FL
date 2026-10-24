@@ -1,9 +1,4 @@
-"""
-trajrep_fl/recovery.py
-======================
-Adaptive Reliability Threshold and Influence Recovery.
 
-"""
 
 from __future__ import annotations
 
@@ -15,17 +10,7 @@ import torch
 
 
 class AdaptiveThresholdController:
-    """
-    Parameters
-    ----------
-    delta_init  : float  Initial threshold δ^0.      
-    delta_min   : float  Minimum threshold.          
-    delta_max   : float  Maximum threshold.           
-    delta_floor : float  Warm-up floor.               
-    T_wu        : int    Warm-up duration (rounds).   
-    upsilon_S   : float  TSC-trend gain.              
-    upsilon_V   : float  Reliability-variance gain.   
-    """
+
 
     def __init__(
         self,
@@ -46,11 +31,11 @@ class AdaptiveThresholdController:
         self.upsilon_S = upsilon_S
         self.upsilon_V = upsilon_V
 
-        # Per-client TSC history for S_TSC computation
+        
         self._prev_tsc: Dict[int, float] = {}
 
     def get_threshold(self, round_idx: int) -> float:
-        """Return the effective threshold at round_idx (accounts for warm-up)."""
+        
         return self.delta
 
     def update(
@@ -60,14 +45,14 @@ class AdaptiveThresholdController:
         q_current: Dict[int, float],
     ):
         
-        # S_TSC^t = mean(abs(TSC_i^t - TSC_i^{t_i^-})) for returning clients
+        
         shifts = []
         for cid, tsc_t in tsc_current.items():
             if cid in self._prev_tsc:
                 shifts.append(abs(tsc_t - self._prev_tsc[cid]))
         S_tsc = float(sum(shifts) / max(len(shifts), 1)) if shifts else 0.0
 
-        # V_q^t = Var({q_i^t})
+        
         q_vals = list(q_current.values())
         if len(q_vals) > 0:
             mean_q = sum(q_vals) / len(q_vals)
@@ -75,7 +60,7 @@ class AdaptiveThresholdController:
         else:
             V_q = 0.0
 
-        # Unconstrained proposal
+        
         delta_prop = (
             self.delta
             + self.upsilon_S * S_tsc
@@ -83,25 +68,17 @@ class AdaptiveThresholdController:
         )
         delta_prop = max(self.delta_min, min(self.delta_max, delta_prop))
 
-        # ω_t = min(t / T_wu, 1) — ; runner is 1-indexed so t=round_idx
+        
         omega = min(round_idx / max(self.T_wu, 1), 1.0)
         self.delta = self.delta_floor + omega * (delta_prop - self.delta_floor)
 
-        # Store current TSC values for next round's shift computation
+        
         for cid, tsc_t in tsc_current.items():
             self._prev_tsc[cid] = tsc_t
 
 
 class InfluenceRecoveryManager:
-    """
-    Tracks low-reliability monitoring state and manages recovery.
 
-    Parameters
-    ----------
-    kappa_rec        : float  Sigmoid sharpness κ_rec.   
-    theta_rec        : float  Recovery threshold θ_rec.  
-    recovery_window  : int    Participation window N_w.  
-    """
 
     def __init__(
         self,
@@ -113,10 +90,10 @@ class InfluenceRecoveryManager:
         self.theta_rec = theta_rec
         self.recovery_window = recovery_window
 
-        # Set of clients currently in low-reliability monitoring
+        
         self._monitored: Set[int] = set()
 
-        # Per-client readiness history (over N_w most recent participations)
+        
         self._rho_history: Dict[int, deque] = {}
 
     # ------------------------------------------------------------------
@@ -124,7 +101,7 @@ class InfluenceRecoveryManager:
     # ------------------------------------------------------------------
 
     def _readiness(self, q: float, delta: float) -> float:
-        """ρ_i^t = σ(κ_rec · (q - δ))"""
+        
         return 1.0 / (1.0 + math.exp(-self.kappa_rec * (q - delta)))
 
     # ------------------------------------------------------------------
@@ -137,15 +114,7 @@ class InfluenceRecoveryManager:
         q_scores: Dict[int, float],
         delta: float,
     ) -> Tuple[Set[int], List[int], List[int]]:
-        """
-        Update monitoring/recovery state for each participating client.
 
-        Returns
-        -------
-        monitored  : Set[int]   Clients currently in monitoring (no impact on aggregation).
-        newly_flagged : List[int]  Clients that entered monitoring this round.
-        recovered  : List[int]  Clients that exited monitoring this round.
-        """
         newly_flagged: List[int] = []
         recovered: List[int] = []
 

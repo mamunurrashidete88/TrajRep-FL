@@ -1,8 +1,4 @@
-"""
-scripts/prepare_femnist.py
-==========================
 
-"""
 
 from __future__ import annotations
 
@@ -21,10 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 def download_leaf_femnist(output_dir: str):
-    """
-    Instructions for downloading LEAF FEMNIST.
-    The actual download requires cloning the LEAF repository.
-    """
+
     print("=" * 60)
     print("FEMNIST Setup Instructions")
     print("=" * 60)

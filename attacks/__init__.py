@@ -1,24 +1,3 @@
-"""
-attacks/__init__.py
-===================
-Attack registry and factory for TrajRep-FL evaluations.
-
-Payloads
---------
-backdoor       — fixed pixel-trigger backdoor (FEMNIST, CIFAR-10)
-backdoor_token — fixed token-trigger backdoor (Shakespeare)
-wanet          — elastic image-warping stealthy trigger (vision only)
-narcissus      — clean-label adversarial perturbation (vision only)
-label_flip     — untargeted label-flipping (utility stress-test)
-
-Execution strategies
---------------------
-static         — inject payload from round 0 (non-adaptive baseline)
-delayed_shift  — benign for delay_rounds=30, then abruptly activate
-gradual_drift  — linear interpolation toward harmful over drift_duration=50
-score_aware    — white-box PGD with trajectory-budget constraint (strongest)
-burst          — alternating benign/malicious windows (intermediate case)
-"""
 
 from attacks.base_attack import BaseAttack
 from attacks.backdoor import BackdoorAttack, LabelFlipAttack, TokenBackdoorAttack
@@ -36,12 +15,7 @@ def build_attack(
     device,
     score_fn=None,
 ) -> BaseAttack:
-    """
-    Construct an attack from a (strategy, payload) pair.
 
-    strategy : "static" | "delayed_shift" | "gradual_drift" | "score_aware" | "burst"
-    payload  : "backdoor" | "backdoor_token" | "wanet" | "narcissus" | "label_flip"
-    """
     adv_cfg = cfg.get("adversary", cfg)
     target_class = adv_cfg.get("target_class", 0)
 

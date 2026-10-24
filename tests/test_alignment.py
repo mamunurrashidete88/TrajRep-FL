@@ -1,4 +1,4 @@
-"""Manuscript-alignment regression tests (do not constitute empirical validation)."""
+
 from __future__ import annotations
 import copy
 import math
@@ -34,7 +34,7 @@ def deltas(ids):
 
 
 def test_manuscript_target_absolute_three_disagreements():
-    # Index 0 is raw Delta_ST here; the combined TSC must NOT replace it.
+    
     u = torch.tensor([[.2, .4, .6, 99., -1.], [0., 2., 0., 1., 1.]])
     q = reliability_target(u, rec_err=torch.tensor([0., 300.]), epsilon_cal=1e-4)
     assert torch.allclose(q, torch.tensor([.8, 2/3]), atol=1e-6)
@@ -107,8 +107,7 @@ def test_self_supervised_server_target_uses_st_not_tsc():
     for cid in ids:
         expected = max(1e-4, min(1.-1e-4,
             1. - (out['delta_st'][cid] +
-                  # PSC and MR are not logged, but original server target
-                  # is independently reconstructed in test_manuscript_target.
+
                   0.) / 6.))
         assert 0. <= out['q_targets'][cid] <= 1.
         assert out['q_targets'][cid] <= expected + 1e-5

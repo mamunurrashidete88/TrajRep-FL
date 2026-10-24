@@ -1,7 +1,4 @@
-"""
-experiments/run_experiment.py
-==============================
-"""
+
 
 from __future__ import annotations
 
@@ -121,7 +118,7 @@ def build_backdoor_loader(test_dataset, adv_cfg: dict, dataset_name: str,
             )
             images, labels = [], []
             for x, y in DataLoader(test_dataset, batch_size=256):
-                mask = y != target_class  # targeted ASR excludes naturally targeted examples
+                mask = y != target_class  
                 if not bool(mask.any()):
                     continue
                 x_bd = atk.add_trigger_to_image(x[mask])
@@ -348,8 +345,7 @@ def main():
         "synthetic_smoke": args.synthetic_smoke,
         "data_provenance": "synthetic permitted" if args.synthetic_smoke else "real data required",
     }
-    # Keep the complete ordered time series for reproducibility. "final" means
-    # last recorded evaluation; summary below contains averaged statistics.
+
     def _last(key):
         return next((float(row[key]) for row in reversed(runner.round_logs)
                      if row.get(key) is not None), None)

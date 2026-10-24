@@ -1,4 +1,4 @@
-"""Exactly normalized reliability-gated aggregation and model update."""
+
 from __future__ import annotations
 from typing import Dict, List, Optional
 import torch
@@ -6,8 +6,7 @@ import torch.nn as nn
 
 class ReliabilityGatedAggregation:
     def __init__(self, epsilon_agg: float = 0.0):
-        # Legacy epsilon is ignored: positive sigmoid scores + clipped logits
-        # ensure a positive denominator for every nonempty valid cohort.
+
         self.epsilon_agg = 0.0
 
     def compute_weights(self, client_ids: List[int], q_scores: Dict[int, float], r_tilde: Dict[int, float]) -> Dict[int, float]:

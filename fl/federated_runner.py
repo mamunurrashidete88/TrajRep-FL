@@ -1,8 +1,4 @@
-"""
-fl/federated_runner.py
-======================
 
-"""
 
 from __future__ import annotations
 
@@ -158,9 +154,7 @@ class FederatedRunner:
         return self.metrics
 
     def _local_poison_spec(self, round_idx):
-        """Map attack strategy to on-device poisoning fraction for supported payloads.
-        Other payloads remain update-space attacks, and do not claim data poisoning.
-        """
+
         adv = self.cfg.get('adversary', {})
         payload = adv.get('payload', 'backdoor')
         if payload not in ('backdoor', 'backdoor_token', 'label_flip'):
@@ -225,14 +219,14 @@ class FederatedRunner:
         return 100.0 * correct / max(total, 1)
 
     def _compute_fpr(self, agg_log, is_adversarial, sampled_ids) -> float:
-        """Post-transition monitored-state FPR on benign *valid* participants."""
+        
         valid = agg_log.get('valid_clients', sampled_ids)
         benign = [cid for cid in valid if not is_adversarial.get(cid, False)]
         monitored = set(agg_log.get('monitored_client_ids', agg_log.get('isolated_this_round', [])))
         return 100.0 * sum(cid in monitored for cid in benign) / len(benign) if benign else 0.0
 
     def _compute_eac(self, agg_log, is_adversarial, client_deltas, sampled_ids) -> float:
-        """Norm of weighted adversarial update, using actual normalized alpha."""
+        
         if 'EHC' in agg_log:
             return float(agg_log['EHC'])
         weights = agg_log.get('alpha')

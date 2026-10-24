@@ -1,19 +1,3 @@
-"""
-tests/test_trajrep_fl.py
-=========================
-Unit tests for TrajRep-FL core components.
-
-Tests cover:
-  - Sparse random projection (fixed, shapes, reproducibility)
-  - GRU encoder (forward pass, hidden state persistence)
-  - Multi-resolution anchors (distance computation, update order)
-  - Feature vector construction (all 5 signals)
-  - Interaction MLP (logit clipping, sigmoid output)
-  - Reliability-gated aggregation (weight properties, EHC bound)
-  - Adaptive threshold (warm-up schedule, TSC-based adaptation)
-  - Recovery manager (readiness, finite-participation recovery)
-  - Full server round (shapes, no-crash, ablation flags)
-"""
 
 from __future__ import annotations
 
@@ -134,12 +118,12 @@ class TestAnchors:
 
     def test_update_then_distance(self, anchors):
         z1 = torch.randn(EMBED_DIM)
-        # First visit: no prior anchor
+        # First visit: 
         anchors.update(0, z1)
-        # Second visit: prior anchor = z1
+        # Second visit: 
         z2 = torch.randn(EMBED_DIM)
         d_s, d_f, d_sl = anchors.compute_features(0, z2)
-        # Distance should be in [0, 2] (cosine distance range)
+        
         assert 0.0 <= d_s <= 2.0 + 1e-6
 
     def test_identical_z_zero_distance(self, anchors):
@@ -149,7 +133,7 @@ class TestAnchors:
         assert abs(d_s) < 1e-5
 
     def test_fast_slow_separation_under_drift(self):
-        """Lemma 1: persistent angular drift → fast/slow anchor separation grows."""
+        
         anc = MultiResolutionAnchorManager(
             EMBED_DIM, gamma=0.9, gamma_fast=0.7, gamma_slow=0.1, device=DEVICE
         )
@@ -168,8 +152,7 @@ class TestAnchors:
                 max_delta_mr = delta_mr
             anc.update(0, z)
 
-        # After sustained angular drift, fast and slow anchors should lag
-        # by different amounts → measurable separation
+
         assert max_delta_mr > 1e-3, (
             f"Fast-slow separation should grow under angular drift, got max={max_delta_mr:.6f}"
         )
@@ -256,7 +239,7 @@ class TestAggregation:
 
     def test_ehc_bound(self, aggregator):
         ids = [0, 1, 2, 3]
-        q   = {0: 0.9, 1: 0.9, 2: 0.1, 3: 0.1}   # clients 2,3 are harmful
+        q   = {0: 0.9, 1: 0.9, 2: 0.1, 3: 0.1}   
         r   = {i: 0.0 for i in ids}
         alpha = aggregator.compute_weights(ids, q, r)
 
@@ -277,7 +260,7 @@ class TestThreshold:
         ctrl = AdaptiveThresholdController(
             delta_init=0.3, delta_floor=0.05, T_wu=10
         )
-        # During warm-up, threshold increases toward init
+        
         ctrl.update(0, {}, {})
         d0 = ctrl.get_threshold(0)
         ctrl.update(5, {}, {})
@@ -295,7 +278,7 @@ class TestThreshold:
         # Simulate rising TSC
         ctrl._prev_tsc = {0: 0.2, 1: 0.2}
         ctrl.update(10, tsc_cur, q_cur)
-        assert ctrl.delta > ctrl.delta_floor  # initialized at floor per manuscript
+        assert ctrl.delta > ctrl.delta_floor  
 
 
 # ── Recovery Manager ──────────────────────────────────────────────────
@@ -319,18 +302,18 @@ class TestRecovery:
         mgr.process_round([0], {0: 0.1}, delta)
         assert mgr.is_monitored(0)
 
-        # Sustained recovery 
+         
         for _ in range(5):
             mgr.process_round([0], {0: 0.95}, delta)
 
         assert not mgr.is_monitored(0), "Client should have recovered"
 
     def test_no_false_recovery_with_noisy_q(self):
-        """Recovery should not trigger with one good round then bad rounds."""
+        
         mgr = InfluenceRecoveryManager(kappa_rec=5.0, theta_rec=0.8, recovery_window=5)
         delta = 0.3
         mgr.process_round([0], {0: 0.1}, delta)
-        # 1 good, 4 bad
+        
         mgr.process_round([0], {0: 0.99}, delta)
         for _ in range(4):
             mgr.process_round([0], {0: 0.1}, delta)
@@ -348,8 +331,7 @@ class TestObjective:
         assert loss.item() < 1e-10
 
     def test_smoothness_zero_for_same_alpha(self):
-        # New tensor API: alpha_current is a (K,) tensor aligned to client ids;
-        # alpha_previous is a {cid: prev_float} dict.
+
         ids = [0, 1, 2]
         alpha_curr = torch.tensor([0.5, 0.3, 0.2])
         alpha_prev = {0: 0.5, 1: 0.3, 2: 0.2}

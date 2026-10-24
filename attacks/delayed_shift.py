@@ -1,13 +1,3 @@
-"""
-attacks/delayed_shift.py
-========================
-Delayed Behavioral Shift attack.
-
-Adversarial clients behave benignly for the first ``delay_rounds`` rounds
-(building a stable historical prefix), then abruptly switch to the harmful
-payload. Tests whether the defense detects abrupt behavioral change after a
-clean trajectory prefix.
-"""
 
 from __future__ import annotations
 

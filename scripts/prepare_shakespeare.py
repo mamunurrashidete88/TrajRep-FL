@@ -1,8 +1,3 @@
-"""
-scripts/prepare_shakespeare.py
-================================
-
-"""
 
 from __future__ import annotations
 

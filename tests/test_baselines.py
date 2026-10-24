@@ -1,9 +1,4 @@
-"""
-tests/test_baselines.py
-=======================
-Tests for all eight baseline defense implementations.
-Verifies aggregation logic, isolation decisions, and edge cases.
-"""
+
 from __future__ import annotations
 
 import sys
@@ -72,11 +67,11 @@ class TestTrimmedMeanServer:
         from baselines import TrimmedMeanServer
         server = TrimmedMeanServer(tiny_model, num_clients=20, trim_fraction=0.1, device=device)
         deltas = make_deltas(tiny_model, n=10)
-        # Inject a large outlier at client 0
+        
         for name in deltas[0]:
             deltas[0][name] = deltas[0][name] * 1000.0
         updated, _ = server.aggregate(deltas, list(range(10)), round_idx=1, learning_rate=0.01)
-        # Model should not be wildly corrupted by the outlier
+        
         for _, p in updated.named_parameters():
             assert p.abs().max().item() < 100.0, "Outlier should be trimmed"
 
@@ -113,7 +108,7 @@ class TestKrumServer:
         server = KrumServer(tiny_model, num_clients=20,
                             num_adversarial=1, multi_k=1, device=device)
         deltas = make_deltas(tiny_model, n=8)
-        # Make client 0 an extreme outlier
+        
         for name in deltas[0]:
             deltas[0][name] = torch.ones_like(deltas[0][name]) * 1000.0
         _, log = server.aggregate(deltas, list(range(8)), round_idx=1)
@@ -133,14 +128,14 @@ class TestBayBFedServer:
             assert isinstance(updated, nn.Module)
 
     def test_uncertainty_decreases_with_consistent_clients(self, tiny_model, make_deltas, device):
-        """Stable clients should accumulate lower uncertainty over rounds."""
+        
         from baselines import BayBFedServer
         server = BayBFedServer(tiny_model, num_clients=20, device=device)
         # Same deltas every round = very stable
         deltas = make_deltas(tiny_model, n=5)
         for r in range(1, 8):
             server.aggregate(deltas, list(range(5)), round_idx=r, learning_rate=0.01)
-        # After few rounds of identical updates, variance should be low
+        
         for cid in range(5):
             var = server._running_var.get(cid)
             if var is not None:
@@ -158,7 +153,7 @@ class TestFedRecoverServer:
         # Warm up:
         for r in range(1, 6):
             server.aggregate(deltas, list(range(10)), round_idx=r)
-        # Inject anomalous update for client 0
+        
         for name in deltas[0]:
             deltas[0][name] = torch.randn_like(deltas[0][name]) * 100.0
         _, log = server.aggregate(deltas, list(range(10)), round_idx=6)
@@ -201,9 +196,9 @@ class TestFLDetectorServer:
         server = FLDetectorServer(tiny_model, num_clients=20,
                                   cos_threshold=0.0, device=device)
         deltas = make_deltas(tiny_model, n=8)
-        # First round: no isolation (no previous state)
+        
         _, log1 = server.aggregate(deltas, list(range(8)), round_idx=1)
-        # Second round: same deltas → high cosine similarity → no isolation
+        
         _, log2 = server.aggregate(deltas, list(range(8)), round_idx=2)
         assert len(log2.get("isolated_this_round", [])) == 0
 
@@ -220,7 +215,7 @@ class TestFLDetectorServer:
         assert 0 in log.get("isolated_this_round", [])
 
     def test_permanent_exclusion_behavior(self, tiny_model, make_deltas, device):
-        """FLDetector permanently excludes once flagged."""
+        
         from baselines import FLDetectorServer
         server = FLDetectorServer(tiny_model, num_clients=20,
                                   cos_threshold=0.5, device=device)
@@ -230,9 +225,9 @@ class TestFLDetectorServer:
         reversed_deltas[0] = {k: -v * 10.0 for k, v in deltas[0].items()}
         server.aggregate(reversed_deltas, list(range(5)), round_idx=2)
         assert 0 in server._isolation_set
-        # Round 3: client 0 now behaves normally but still excluded
+        
         _, log3 = server.aggregate(deltas, list(range(5)), round_idx=3)
-        # Client 0 appears in isolated list since it's in the isolation set
+        
         assert 0 in log3.get("isolated_this_round", [])
 
 
@@ -263,7 +258,7 @@ class TestLongShortHistoryServer:
         # Stable for several rounds
         for r in range(1, 20):
             server.aggregate(deltas, list(range(6)), round_idx=r)
-        # Abrupt reversal for client 0
+        
         deltas[0] = {k: -v * 1000.0 for k, v in deltas[0].items()}
         _, log = server.aggregate(deltas, list(range(6)), round_idx=20)
         assert 0 in log.get("isolated_this_round", []), \

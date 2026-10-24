@@ -1,6 +1,4 @@
-"""TrajRep-FL online self-supervised losses, corresponding to Eq. L_traj.
-No ground-truth adversarial labels are used in the training objective.
-"""
+
 from __future__ import annotations
 from typing import Dict, List, Optional
 import math
@@ -21,7 +19,7 @@ def smoothness_loss(alpha_current: torch.Tensor, client_ids: List[int], alpha_pr
 
 
 def entropy_loss(alpha_current: torch.Tensor, epsilon: float = 1e-8) -> torch.Tensor:
-    """Normalized D_KL(alpha || uniform), in [0,1] for n>1."""
+    
     n = alpha_current.numel()
     if n < 2:
         return alpha_current.new_zeros(())
@@ -31,11 +29,7 @@ def entropy_loss(alpha_current: torch.Tensor, epsilon: float = 1e-8) -> torch.Te
 def reliability_target(u_matrix: torch.Tensor, rec_err: Optional[torch.Tensor] = None, kappa: float = 2.0,
                        w_tsc: float = 1.0, w_psc: float = 1.0, w_mr: float = 1.0,
                        w_rec: float = 1.0, epsilon_cal: float = 1e-4) -> torch.Tensor:
-    """Detached qhat=clip(1-(ST+PSC+MR)/6,eps,1-eps).
-    Legacy arguments retained for API compatibility, but are intentionally unused:
-    the submitted manuscript does not use cohort z-scoring or reconstruction error
-    to construct qhat.  ST and PSC and MR are each in [0,2].
-    """
+
     if u_matrix.numel() == 0:
         return u_matrix.new_zeros((0,))
     with torch.no_grad():

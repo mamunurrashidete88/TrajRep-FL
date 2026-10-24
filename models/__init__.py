@@ -16,14 +16,7 @@ def get_model(name: str, **kwargs):
 
 
 def build_model(model_cfg: dict):
-    """
-    Build model from config dict with keys: name, num_classes, etc.
-    Expected by experiments/run_experiment.py.
 
-    Only forwards config keys that the target factory actually accepts, so
-    extra descriptive keys in the config (e.g. ``input_channels``) do not
-    raise ``TypeError``.
-    """
     import inspect
 
     name = model_cfg.get("name", "cnn_femnist")

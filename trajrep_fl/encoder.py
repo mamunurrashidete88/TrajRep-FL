@@ -1,8 +1,4 @@
-"""
-trajrep_fl/encoder.py
-=====================
 
-"""
 
 from __future__ import annotations
 
@@ -19,13 +15,7 @@ import torch.nn.functional as F
 # ---------------------------------------------------------------------------
 
 class SparseRandomProjection(nn.Module):
-    """Fixed sparse signed CountSketch-style random projection.
 
-    Each input coordinate is mapped to `nonzeros_per_column` output positions
-    with deterministic seeded hashes. No d_x by d parameter matrix is stored.
-    This is a sparse random projection, though not the original dense-allocated
-    iid sparse matrix; see ALIGNMENT.md for the implementation distinction.
-    """
     def __init__(self, model_dim: int, projection_dim: int = 128, sparsity: float = 1/3,
                  seed: int = 42, nonzeros_per_column: int = 3, chunk_size: int = 262144):
         super().__init__()
@@ -58,7 +48,7 @@ class SparseRandomProjection(nn.Module):
 
 
 # ---------------------------------------------------------------------------
-# Temporal Encoder (GRU)
+# Temporal Encoder 
 # ---------------------------------------------------------------------------
 
 class TrajectoryEncoder(nn.Module):
@@ -112,7 +102,7 @@ class TrajectoryEncoder(nn.Module):
 
 
 # ---------------------------------------------------------------------------
-# Auxiliary Decoder (self-supervised calibration)
+# Auxiliary Decoder 
 # ---------------------------------------------------------------------------
 
 class TrajectoryDecoder(nn.Module):
@@ -134,10 +124,7 @@ class TrajectoryDecoder(nn.Module):
 # ---------------------------------------------------------------------------
 
 class ClientStateManager:
-    """
-    Per-client server-side state: GRU hidden state and latest embedding.
 
-    """
 
     def __init__(self, embedding_dim: int, num_gru_layers: int, device: torch.device):
         self.embedding_dim = embedding_dim

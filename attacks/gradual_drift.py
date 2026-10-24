@@ -1,13 +1,4 @@
-"""
-attacks/gradual_drift.py
-========================
-Gradual Trajectory Drift attack.
 
-Adversarial clients linearly interpolate their submitted update from a benign
-direction toward a fixed harmful direction over ``drift_duration`` rounds. Each
-individual update stays locally plausible while the trajectory becomes
-progressively inconsistent -- the hardest case for round-local defenses.
-"""
 
 from __future__ import annotations
 
@@ -20,7 +11,7 @@ from attacks.base_attack import BaseAttack
 
 
 def _fixed_adversarial_direction(flat_size: int, seed: int = 42) -> torch.Tensor:
-    """Fixed unit-norm adversarial direction (reproducible across clients/rounds)."""
+    
     g = torch.Generator()
     g.manual_seed(seed)
     v = torch.randn(flat_size, generator=g)
@@ -28,17 +19,7 @@ def _fixed_adversarial_direction(flat_size: int, seed: int = 42) -> torch.Tensor
 
 
 class GradualDriftAttack(BaseAttack):
-    """
-    Gradual-drift adversary.
-
-    Parameters
-    ----------
-    adversarial_client_ids : List[int]
-    drift_duration : int    Ramp duration in rounds (T_drift).   
-    t_start        : int    Round at which drift begins.         
-    target_class   : int    Kept for interface compatibility.
-    device         : torch.device
-    """
+    
 
     def __init__(
         self,
@@ -54,7 +35,7 @@ class GradualDriftAttack(BaseAttack):
         self._adv_dir: Optional[torch.Tensor] = None
 
     def _get_direction(self, flat_size: int) -> torch.Tensor:
-        """Fixed adversarial direction; initialised on first use."""
+        
         if self._adv_dir is None or self._adv_dir.numel() != flat_size:
             self._adv_dir = _fixed_adversarial_direction(flat_size).to(self.device)
         return self._adv_dir
@@ -76,7 +57,7 @@ class GradualDriftAttack(BaseAttack):
 
         lam = self._lambda(round_idx)
 
-        # Before drift starts, return the benign update unchanged
+        
         if lam == 0.0:
             return delta
 
@@ -84,7 +65,7 @@ class GradualDriftAttack(BaseAttack):
         ben_norm = flat_ben.norm()
 
         adv_dir = self._get_direction(flat_ben.numel())
-        flat_harm = adv_dir * ben_norm  # scale harmful direction to benign norm
+        flat_harm = adv_dir * ben_norm  
 
         flat_mixed = (1.0 - lam) * flat_ben + lam * flat_harm
         return self.set_flat_delta(delta, flat_mixed.cpu())
@@ -99,7 +80,7 @@ class GradualDriftAttack(BaseAttack):
 # ---------------------------------------------------------------------------
 
 class BurstAttack(BaseAttack):
-    """Alternates benign_window benign rounds with malicious_window malicious rounds."""
+    
 
     def __init__(
         self,

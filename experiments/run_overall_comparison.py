@@ -1,7 +1,4 @@
-"""
-experiments/run_overall_comparison.py
-========================================
-"""
+
 
 from __future__ import annotations
 
@@ -27,7 +24,7 @@ METHODS = [
     "trajrep_fl",
 ]
 
-# FLIP is vision-only
+
 FLIP_DATASETS = {"femnist", "cifar10"}
 
 
@@ -95,7 +92,7 @@ def main():
                      for _ in [0]):
                 all_results[ds][method] = {"note": "N/E"}
 
-    # Print table
+   
     print(f"\n{'='*80}")
     print(f"TABLE 1 — {args.strategy.upper()} harmful behavior, 20% unreliable clients")
     print(f"{'='*80}")

@@ -1,8 +1,4 @@
-"""
-models/cnn_cifar10.py
-=====================
 
-"""
 
 import torch
 import torch.nn as nn
@@ -95,7 +91,7 @@ class CIFAR10_VGG(nn.Module):
 
 
 # ---------------------------------------------------------------------------
-# Factory (keeps the same name as the original file)
+# Factory 
 # ---------------------------------------------------------------------------
 
 def get_cifar10_model(num_classes: int = 10) -> CIFAR10_VGG:

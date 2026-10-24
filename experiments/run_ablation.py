@@ -1,8 +1,3 @@
-"""
-experiments/run_ablation.py
-============================
-
-"""
 
 from __future__ import annotations
 
@@ -40,7 +35,7 @@ def run_variant(
     seed: int,
     strategy: str = "gradual_drift",
 ) -> Dict:
-    """Run a single ablation variant and return its results."""
+    
     cmd = [
         sys.executable,
         "experiments/run_experiment.py",
@@ -57,7 +52,7 @@ def run_variant(
         print(f"[WARN] {variant}/{dataset}/seed{seed} failed:\n{result.stderr[-500:]}")
         return {}
 
-    # Parse the results.json written by run_experiment.py
+    
     run_tag = (
         f"{dataset}_trajrep_fl_{strategy}"
         + (f"_{variant}" if variant != "full" else "")
@@ -110,7 +105,7 @@ def main():
                         avg[k] = sum(vals) / len(vals)
                 all_results[ds][VARIANT_LABELS[variant]] = avg
 
-    # Print summary table
+    
     print("\n" + "=" * 70)
     print("ABLATION RESULTS")
     print("=" * 70)
